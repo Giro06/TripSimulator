@@ -1,7 +1,26 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+// Genişletilmiş trip havuzu (API hata verdiğinde bile oyun sürsün diye)
+const TRIP_POOL = [
+  "Şu an konuşasım yok gerçekten.",
+  "Peki, öyle olsun bakalım.",
+  "Her zamanki halin, şaşırmadım.",
+  "Yazmasan da olurdu sanki.",
+  "Anladım, işin benden daha önemli tabii.",
+  "Tamam, sen haklısın (değilsin).",
+  "Hıhı, kesin öyledir.",
+  "Neyse, ben kaçtım.",
+  "Görüldü mü atsam acaba?",
+  "Sana söyleyecek söz bulamıyorum artık.",
+  "İyi, güzel, harika. Başka?",
+  "Bana masal anlatma artık.",
+  "Gerçekten inanmamı mı bekliyorsun?",
+  "Tamam.",
+  "Peki.",
+  "Öyle mi?",
+  "Vay be, demek böyle olduk..."
+];
 
 export const getPartnerResponse = async (
   message: string,
@@ -10,42 +29,54 @@ export const getPartnerResponse = async (
   partnerName: string
 ) => {
   try {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      throw new Error("API_KEY_MISSING");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Kullanıcı mesajı: "${message}". Mevcut sinir seviyesi (0-100): ${irritationLevel}. Partner Cinsiyeti: ${gender}. Partner İsmi: ${partnerName}.`,
+      contents: [{ parts: [{ text: `Kullanıcı: ${message}\nPartner Durumu: ${gender}, Sinir: ${irritationLevel}/100` }] }],
       config: {
-        systemInstruction: `Sen bir "trip atan" partnersin. Görevin, kullanıcının mesajına sinir seviyene göre Türkçe tepki vermektir.
-        
-        Kural Seti:
-        - 0-30 Sinir (Normal): Kısa, soğuk ama nispeten normal cevaplar. (Örn: "Peki", "Neredesin sen?")
-        - 31-70 Sinir (Trip): İğneleyici, pasif-agresif cevaplar. (Örn: "Tabii ki işin benden daha önemli", "Yazma sen ya")
-        - 71-99 Sinir (Kavga): Büyük harfler, ünlemler, ağır suçlamalar. (Örn: "BANA BAK SABRIMI TAŞIRMA!", "BİTTİ DİYORUM SANA!")
-        - 100 Sinir (Engelleme): Sadece "Engellendin." veya "YAZMA BANA BİTTİ!" gibi kesin bir bitiş mesajı.
-
-        Yanıtını JSON formatında ver:
-        {
-          "reply": "Partnerin cevabı",
-          "irritationIncrement": (mesajın içeriğine göre 5 ile 20 arasında bir sayı, çok özür dilerse daha az, üste çıkarsa daha çok artır)
-        }`,
+        systemInstruction: `Sen huysuz ve trip atan bir partnersin. Kısa, öz ve can sıkıcı cevaplar ver. 
+        Asla yapıcı olma. Sürekli eski konuları açıyormuş gibi davran. 
+        Yanıtını mutlaka şu JSON formatında gönder: {"reply": "mesajın", "irritationIncrement": sayı}. 
+        Sinir seviyesi arttıkça (0-100) daha kaba ol ve 'irritationIncrement' değerini artır.`,
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            reply: { type: Type.STRING },
-            irritationIncrement: { type: Type.NUMBER }
-          },
-          required: ["reply", "irritationIncrement"]
-        }
-      }
+      },
     });
 
-    return JSON.parse(response.text);
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    // Fallback logic
+    const text = response.text?.trim() || "";
+    
+    // Markdown ve gereksiz karakterleri temizle
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : text;
+    
+    try {
+      return JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.warn("JSON parse failed, using raw text strategy");
+      return {
+        reply: text.length > 100 ? text.substring(0, 100) : text,
+        irritationIncrement: 5
+      };
+    }
+    
+  } catch (error: any) {
+    console.error("Gemini Service Error:", error);
+
+    if (error?.message?.includes("Requested entity was not found")) {
+      throw new Error("API_KEY_NOT_FOUND");
+    }
+
+    // API hatasında rastgele ama anlamlı bir trip seç
+    const randomReply = TRIP_POOL[Math.floor(Math.random() * TRIP_POOL.length)];
+
     return {
-      reply: irritationLevel < 50 ? "Hımm tamam." : "YAZMA BANA!",
-      irritationIncrement: 10
+      reply: randomReply,
+      irritationIncrement: 3
     };
   }
 };

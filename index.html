@@ -7,6 +7,10 @@
     <title>Tripli Partner Simülatörü</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google AdSense Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7657412837781109" crossorigin="anonymous"></script>
+
     <style>
         body {
             background-color: #f0f2f5;
@@ -16,6 +20,44 @@
             background-color: #e5ddd5;
             background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
             background-repeat: repeat;
+        }
+        @keyframes stamp {
+            0% { opacity: 0; transform: scale(5) rotate(-15deg); }
+            50% { opacity: 1; transform: scale(1) rotate(-10deg); }
+            100% { opacity: 1; transform: scale(1) rotate(-10deg); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+        .animate-stamp {
+            animation: stamp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .animate-shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        .glass-shatter {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 50;
+        }
+        /* AdSense Placeholder Styling */
+        .ad-container {
+            min-height: 250px;
+            background: #fafafa;
+            border: 1px dashed #ccc;
+            position: relative;
+        }
+        .ad-container::before {
+            content: "Ads by Google";
+            position: absolute;
+            top: 2px;
+            right: 5px;
+            font-size: 9px;
+            color: #999;
         }
     </style>
 <script type="importmap">
